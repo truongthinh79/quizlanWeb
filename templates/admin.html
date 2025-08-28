@@ -1,0 +1,284 @@
+{% extends 'base.html' %}{% block title %}Quản trị{% endblock %}
+{% block content %}
+{% if not logged_in %}
+  <p>Vui lòng đăng nhập tại <code>/admin/login</code></p>
+{% else %}
+<div class="row">
+  <div class="col-md-5">
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-primary text-white">Tạo kỳ thi</div>
+      <div class="card-body">
+        <form method="post" action="/admin/create">
+          <div class="mb-3"><label class="form-label">Tiêu đề</label><input name="title" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Thời lượng (phút)</label><input name="duration" type="number" min="1" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label">Mã truy cập</label><input name="access_code" class="form-control" placeholder="Tự tạo nếu bỏ trống"></div>
+          <button class="btn btn-primary">Tạo</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-info text-white">Upload danh sách học sinh</div>
+      <div class="card-body">
+        <form method="post" action="/admin/upload_students" enctype="multipart/form-data">
+          <div class="mb-2"><label class="form-label">Upload file học sinh (Excel/CSV)</label></div>
+          <div class="mb-2"><input type="file" name="students_file" accept=".xls,.xlsx,.csv" class="form-control" required></div>
+          <button class="btn btn-success mb-2">Upload</button>
+        </form>
+        <a class="btn btn-outline-primary mb-2" href="/admin/export_students">Xuất danh sách học sinh</a>
+        <hr>
+        <form method="post" action="/admin/change_password">
+          <div class="mb-2"><label class="form-label">Đổi mật khẩu admin</label></div>
+          <div class="mb-2"><input type="password" name="new_password" class="form-control" placeholder="Mật khẩu mới" required></div>
+          <div class="mb-2"><input type="password" name="confirm_password" class="form-control" placeholder="Xác nhận mật khẩu" required></div>
+          <button class="btn btn-warning">Đổi mật khẩu</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-secondary text-white">Xuất / Logs</div>
+      <div class="card-body">
+        <a class="btn btn-success mb-2" href="/admin/export_results">Xuất kết quả ra Excel</a>
+        <a class="btn btn-secondary mb-2" href="/admin/export_logs">Xuất logs (blur events)</a>
+        <a class="btn btn-outline-danger mb-2" href="/logout">Đăng xuất</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white">Danh sách kỳ thi</div>
+      <div class="card-body">
+        {% if quizzes|length==0 %}
+          <p>Chưa có kỳ thi.</p>
+        {% else %}
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead><tr><th>Tiêu đề</th><th>Mã</th><th>Thời lượng</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+              <tbody>
+              {% for q in quizzes %}
+                <tr>
+                  <td>{{ q.title }}</td>
+                  <td><code>{{ q.access_code }}</code></td>
+                  <td>{{ (q.duration_seconds//60) }} phút</td>
+                  <td><span class="badge bg-{{ 'success' if q.is_active else 'secondary' }}">{{ 'Mở' if q.is_active else 'Đóng' }}</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-warning edit-btn" data-id="{{ q.id }}" data-title="{{ q.title }}" data-duration="{{ q.duration_seconds//60 }}" data-code="{{ q.access_code }}">Sửa</button>
+                    <form method="post" action="/admin/delete/{{ q.id }}" style="display:inline" onsubmit="return confirm('Xóa vĩnh viễn?');">
+                      <button class="btn btn-sm btn-danger">Xóa</button>
+                    </form>
+                    <form method="post" action="/admin/toggle/{{ q.id }}" style="display:inline">
+                      <button class="btn btn-sm btn-secondary">{{ 'Đóng' if q.is_active else 'Mở' }}</button>
+                    </form>
+                    <a class="btn btn-sm btn-primary" href="/quiz/{{ q.id }}" target="_blank">Mở đề</a>
+                    <details class="mt-2">
+                      <summary>Import / Quản lý câu hỏi ({{ (questions.get(q.id) or [])|length }})</summary>
+                      <div class="mt-2">
+                        <form method="post" action="/admin/import/{{ q.id }}" enctype="multipart/form-data">
+                          <input type="file" name="docx" accept=".docx" required>
+                          <button class="btn btn-sm btn-info">Import .docx</button>
+                        </form>
+                        <button class="btn btn-sm btn-success mt-2" onclick="openQModal('{{ q.id }}')">+ Thêm câu hỏi</button>
+                        {% set qs = questions.get(q.id) or [] %}
+                        {% if qs|length==0 %}
+                          <p class="text-muted mt-2">Chưa có câu hỏi.</p>
+                        {% else %}
+                          <div class="table-responsive mt-2">
+                            <table class="table table-bordered table-sm">
+                              <thead><tr><th>#</th><th>Nội dung</th><th>Hình</th><th>Kiểu</th><th>Đáp án</th><th></th></tr></thead>
+                              <tbody>
+                                {% for item in qs %}
+                                  <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ item.text }}</td>
+                                    <td>{% if item.image %}<img src="{{ url_for('static', filename=item.image) }}" width="50">{% endif %}</td>
+                                    <td>{{ 'Nhiều' if item.multi else 'Một' }}</td>
+                                    <td>
+                                      {% for o in item.options %}
+                                        <div>{{ o.label }}) {{ o.text }} {% if o.image %}<img src="{{ url_for('static', filename=o.image) }}" width="50">{% endif %} {% if o.is_correct %}<span class="badge bg-success">Đúng</span>{% endif %}</div>
+                                      {% endfor %}
+                                    </td>
+                                    <td>
+                                      <button class="btn btn-sm btn-outline-warning" onclick="openQModal('{{ q.id }}','{{ item.id }}', {{ item|tojson }})">Sửa</button>
+                                      <form method="post" action="/admin/questions/{{ q.id }}/{{ item.id }}/delete" style="display:inline" onsubmit="return confirm('Xóa câu hỏi?');">
+                                        <button class="btn btn-sm btn-outline-danger">Xóa</button>
+                                      </form>
+                                    </td>
+                                  </tr>
+                                {% endfor %}
+                              </tbody>
+                            </table>
+                          </div>
+                        {% endif %}
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+        <span>Danh sách học sinh</span>
+        <button class="btn btn-sm btn-success" onclick="openSModal()">+ Thêm học sinh</button>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Lọc theo lớp</label>
+            <select id="classFilter" class="form-select" onchange="filterStudents()">
+              <option value="">-- Tất cả lớp --</option>
+              {% for cls in classes %}
+                <option value="{{ cls }}">{{ cls }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tìm tên</label>
+            <input id="nameFilter" class="form-control" placeholder="Tìm tên học sinh" oninput="filterStudents()">
+          </div>
+        </div>
+        <p><small>Tổng: <span id="studentCount">{{ students|length }}</span> học sinh</small></p>
+        <div class="table-responsive">
+          <table class="table table-sm" id="studentTable">
+            <thead><tr><th>#</th><th>Tên</th><th>Lớp</th><th>Thêm lúc</th><th>Hành động</th></tr></thead>
+            <tbody>
+              {% for s in students %}
+                <tr data-class="{{ s.class|default('Chưa phân lớp') }}"><td>{{ loop.index }}</td><td>{{ s.name }}</td><td>{{ s.class|default('Chưa phân lớp') }}</td><td>{{ s.created_at }}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-warning" onclick="openSModal('{{ s.id }}', {{ s|tojson }})">Sửa</button>
+                    <form method="post" action="/admin/students/{{ s.id }}/delete" style="display:inline" onsubmit="return confirm('Xóa học sinh?');">
+                      <button class="btn btn-sm btn-outline-danger">Xóa</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal & question modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" id="editForm" class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sửa kỳ thi</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Tiêu đề</label><input name="title" id="editTitle" class="form-control" required></div>
+        <div class="mb-3"><label class="form-label">Thời lượng (phút)</label><input name="duration" id="editDuration" type="number" min="1" class="form-control" required></div>
+        <div class="mb-3"><label class="form-label">Mã truy cập</label><input name="access_code" id="editCode" class="form-control"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary">Lưu</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="qModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" id="qForm" class="modal-content" enctype="multipart/form-data">
+      <div class="modal-header"><h5 id="qModalLabel" class="modal-title">Câu hỏi</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Nội dung</label><textarea name="q_text" id="qText" class="form-control" rows="2" required></textarea></div>
+        <div class="mb-3"><label class="form-label">Hình ảnh câu hỏi (tùy chọn)</label><input type="file" name="q_image" class="form-control" accept="image/*"></div>
+        <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="qMulti" name="q_multi"><label class="form-check-label">Cho phép chọn nhiều đáp án</label></div>
+        <div><label class="form-label">Đáp án</label><div id="optList"></div><button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addOptRow()">+ Thêm đáp án</button></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary">Lưu</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="sModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" id="sForm" class="modal-content">
+      <div class="modal-header"><h5 id="sModalLabel" class="modal-title">Học sinh</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Tên</label><input name="s_name" id="sName" class="form-control" required></div>
+        <div class="mb-3"><label class="form-label">Lớp</label><input name="s_class" id="sClass" class="form-control" required></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary">Lưu</button></div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.edit-btn').forEach(btn=>{
+  btn.addEventListener('click', function(){
+    const id=this.dataset.id, title=this.dataset.title, dur=this.dataset.duration, code=this.dataset.code;
+    document.getElementById('editTitle').value=title;
+    document.getElementById('editDuration').value=dur;
+    document.getElementById('editCode').value=code;
+    document.getElementById('editForm').action=`/admin/update/${id}`;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+  });
+});
+function addOptRow(opt={label:'', text:'', is_correct:0, image:''}){
+  const wrap=document.getElementById('optList');
+  const div=document.createElement('div'); div.className='row g-2 align-items-center mb-2';
+  div.innerHTML=`<div class="col-2"><input class="form-control" name="opt_label" placeholder="A" value="${opt.label||''}"></div>
+  <div class="col-5"><input class="form-control" name="opt_text" placeholder="Nội dung đáp án" value="${opt.text||''}" required></div>
+  <div class="col-3"><input type="file" class="form-control" name="opt_image" accept="image/*"></div>
+  <div class="col-2 form-check d-flex align-items-center"><input class="form-check-input me-2" type="checkbox" name="opt_correct" value="${opt.label||''}" ${opt.is_correct?'checked':''} onchange="this.value=this.parentNode.parentNode.querySelector('[name=opt_label]').value"><label class="form-check-label">Đúng</label></div>`;
+  if(opt.image) div.querySelector('.col-3').innerHTML += `<small>Hiện tại: ${opt.image}</small>`;
+  wrap.appendChild(div);
+}
+function openQModal(quizId, qId=null, data=null){
+  const form=document.getElementById('qForm');
+  document.getElementById('qText').value = data ? (data.text||'') : '';
+  document.getElementById('qMulti').checked = data ? Boolean(data.multi) : false;
+  const list=document.getElementById('optList'); list.innerHTML='';
+  if (data && data.options && data.options.length){
+    data.options.forEach(o=>addOptRow(o));
+  } else { ['A','B','C','D'].forEach(lbl=>addOptRow({label:lbl, text:'', is_correct:0})); }
+  if (qId){
+    form.action = `/admin/questions/${quizId}/${qId}/update`;
+    document.getElementById('qModalLabel').innerText = 'Sửa câu hỏi';
+  } else {
+    form.action = `/admin/questions/${quizId}/create`;
+    document.getElementById('qModalLabel').innerText = 'Thêm câu hỏi';
+  }
+  new bootstrap.Modal(document.getElementById('qModal')).show();
+}
+function openSModal(sId=null, data=null){
+  const form=document.getElementById('sForm');
+  document.getElementById('sName').value = data ? (data.name||'') : '';
+  document.getElementById('sClass').value = data ? (data.class||'') : '';
+  if (sId){
+    form.action = `/admin/students/${sId}/update`;
+    document.getElementById('sModalLabel').innerText = 'Sửa học sinh';
+  } else {
+    form.action = `/admin/students/create`;
+    document.getElementById('sModalLabel').innerText = 'Thêm học sinh';
+  }
+  new bootstrap.Modal(document.getElementById('sModal')).show();
+}
+function filterStudents(){
+  const classFilter = document.getElementById('classFilter').value;
+  const nameFilter = document.getElementById('nameFilter').value.toLowerCase();
+  const rows = document.querySelectorAll('#studentTable tbody tr');
+  let count = 0;
+  rows.forEach(row => {
+    const rowClass = row.dataset.class || 'Chưa phân lớp';
+    const rowName = row.querySelectorAll('td')[1].textContent.toLowerCase();
+    if ((!classFilter || rowClass === classFilter) && rowName.includes(nameFilter)) {
+      row.style.display = '';
+      count++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  document.getElementById('studentCount').textContent = count;
+}
+</script>
+
+{% endif %}
+{% endblock %}
