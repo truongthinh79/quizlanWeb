@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% block title %}Kết quả{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">Kết quả nộp bài</div>
+  <div class="card-body">
+    <a class="btn btn-success mb-3" href="/admin/export_results">Xuất kết quả ra Excel</a>
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead><tr><th>ID</th><th>Học sinh</th><th>Lớp</th><th>Kỳ thi</th><th>Điểm</th><th>Bắt đầu</th><th>Kết thúc</th></tr></thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{{ r.id[:8] }}...</td>
+            <td>{{ r.name }}</td>
+            <td>{{ r.class }}</td>
+            <td>{{ r.title }}</td>
+            <td>{{ r.score }}/{{ r.total }}</td>
+            <td>{{ r.started_at }}</td>
+            <td>{{ r.finished_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

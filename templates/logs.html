@@ -1,0 +1,27 @@
+{% extends 'base.html' %}{% block title %}Logs chống gian lận{% endblock %}
+{% block content %}
+<h3>Logs chống gian lận (rời tab / events)</h3>
+{% if annotated %}
+  {% for qid, info in annotated.items() %}
+    <div class="card mb-3">
+      <div class="card-header"><strong>{{ info.meta.title }}</strong> — mã: <code>{{ info.meta.access_code }}</code></div>
+      <div class="card-body">
+        {% if not info.logs %}
+          <p class="text-muted">Không có sự kiện</p>
+        {% else %}
+          {% for student, events in info.logs.items() %}
+            <h5>{{ student }}</h5>
+            <ul>
+              {% for e in events %}
+                <li>{{ e.time }} — {{ e.event }}</li>
+              {% endfor %}
+            </ul>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>Chưa có dữ liệu logs.</p>
+{% endif %}
+{% endblock %}

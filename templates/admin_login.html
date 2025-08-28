@@ -1,0 +1,17 @@
+{% extends 'base.html' %}{% block title %}Admin login{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white">Đăng nhập Giáo viên / Admin</div>
+      <div class="card-body">
+        <form method="post" action="/admin/login">
+          <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Mật khẩu admin" required></div>
+          <button class="btn btn-primary">Đăng nhập</button>
+        </form>
+        <p class="mt-2"><small>Mật khẩu mặc định: admin123 — đổi trong Admin.</small></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
