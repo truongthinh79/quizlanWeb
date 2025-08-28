@@ -1,0 +1,5 @@
+flask==3.0.3  # Phiên bản mới nhất ổn định
+werkzeug==3.0.4
+python-docx==1.1.2  # Để parse .docx
+pandas==2.2.2  # Để import students.xlsx/csv
+gunicorn==22.0.0  # Để run production trên Render
