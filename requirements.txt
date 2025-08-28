@@ -1,5 +1,2 @@
 flask
-pandas
-openpyxl
-python-docx
 gunicorn

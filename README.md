@@ -1,14 +1,20 @@
 # QuizLAN Web
 
-Ứng dụng thi trắc nghiệm Flask (học sinh + admin).
+Ứng dụng trắc nghiệm trực tuyến (Flask).
 
 ## Cách chạy local
+
 ```bash
 pip install -r requirements.txt
 python app.py
 ```
-Mở http://127.0.0.1:5000
 
-## Deploy Render/Deta/Fly.io
-- Render: cần file `requirements.txt` và `Procfile`
-- Start command: `gunicorn app:app`
+Truy cập: http://127.0.0.1:5000
+
+## Deploy Render
+
+- Build Command:
+  pip install -r requirements.txt
+
+- Start Command:
+  gunicorn app:app
